@@ -1,7 +1,7 @@
 library(fpp3)
 library(readxl)
 library(tidyverse)
-dt<-read_xlsx("C:/Users/Usuario/Desktop/Series Temporales/Inflation/inflacin.xlsx",skip=1)
+dt<-read_xlsx("C:/Users/Usuario/Desktop/Series Temporales/Inflation/inflacin.xlsx")
 dt2<- dt[,1:4];names(dt2)<-c("fecha","mensual","anual","acumulada")
 head(dt2)
 dt_tsibble<-dt2|>mutate(Date=yearmonth(fecha))|> as_tsibble(index = Date)
