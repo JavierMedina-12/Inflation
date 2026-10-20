@@ -86,3 +86,19 @@ inflacion |>
     color = "Variable"
   ) +
   theme_minimal()
+
+
+# Revisado por: Joseph Piuri Encarnación
+
+# Estacionalidad:En el gráfico de estacionalidad anual de la inflación mensual, parece que en
+# los meses de septiembre y abril la inflación tiende a subir en casi todos los años. 
+
+# Tendencia:  A partir del gráfico de evolución de la inflación mensual, no se puede apreciar 
+# una tendencia muy marcada monótona. Los datos oscilan entre -1 y 1.5 de forma no controlada. 
+
+# Ciclo: La gráfica de evolución de la inflación no presenta ciclos. 
+
+#Estacionaridad: Entre el inicio hasta enero de 2025, la media parece constante, sin embargo, a 
+# partir de febrero 2015, la series se desplaza hacia abajo, lo que implicaría que la media dejó
+# ser constante. De igual forma, las oscilaciones en los datos no tienen la misma altura por lo 
+# tampoco se puede decir que la varianza es constante. 
