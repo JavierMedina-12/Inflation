@@ -102,3 +102,5 @@ inflacion |>
 # partir de febrero 2015, la series se desplaza hacia abajo, lo que implicaría que la media dejó
 # ser constante. De igual forma, las oscilaciones en los datos no tienen la misma altura por lo 
 # tampoco se puede decir que la varianza es constante. 
+
+# Me olvidé de hacer el branch con mis iniciales:c
