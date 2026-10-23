@@ -1,0 +1,49 @@
+library(fpp3)
+library(tidyverse)
+library(here)
+inflacion <- read_csv(here( "DATA.csv"), show_col_types = FALSE) |>
+  mutate(fecha = yearmonth(fecha)) |>
+  select(-Date) |>
+  as_tsibble(index = fecha) #|>
+#mutate(across(
+# c(anual, acumulada),
+#~ if_else(fecha < yearmonth("2007 Jan"), NA_real_, .x)
+# ))
+inflacion|> autoplot()
+
+lambda <- inflacion |>
+  features(mensual, features = guerrero) |>
+  pull(lambda_guerrero)
+inflacion |>
+  autoplot(box_cox(mensual, lambda))
+
+#######################################
+
+
+us_retail_employment <- us_employment |>
+  filter(year(Month) >= 1990, Title == "Retail Trade") |>
+  select(-Series_ID)
+autoplot(us_retail_employment, Employed) +
+  labs(y = "Persons (thousands)", title = "Total employment in US retail")
+
+dcmp <- us_retail_employment |>
+  model(stl = STL(Employed))
+components(dcmp)
+
+components(dcmp) |>
+  as_tsibble() |>
+  autoplot(Employed, colour = "gray") +
+  geom_line(aes(y = trend), colour = "#D55E00") +
+  labs(
+    y = "Persons (thousands)",
+    title = "Total employment in US retail"
+  )
+
+components(dcmp) |> autoplot()
+
+#################
+dcmp_inflation<-inflacion|> model(stl=STL(mensual))
+components(dcmp_inflation)|> autoplot()
+components(dcmp_inflation)|>as_tsibble()|>autoplot(mensual,colour="blue")+
+  geom_line(aes(y=trend),colour="orange")+
+  labs(y="ICP")
