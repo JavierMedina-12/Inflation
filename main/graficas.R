@@ -7,11 +7,7 @@ here::i_am("main/graficas.R")
 inflacion <- read_csv(here("Data", "DATA.csv"), show_col_types = FALSE) |>
   mutate(fecha = yearmonth(fecha)) |>
   select(-Date) |>
-  as_tsibble(index = fecha) #|>
-  #mutate(across(
-   # c(anual, acumulada),
-    #~ if_else(fecha < yearmonth("2007 Jan"), NA_real_, .x)
- # ))
+  as_tsibble(index = fecha) 
 
 # Serie mensual
 
@@ -104,3 +100,4 @@ inflacion |>
 # tampoco se puede decir que la varianza es constante. 
 
 # Me olvidé de hacer el branch con mis iniciales:c
+

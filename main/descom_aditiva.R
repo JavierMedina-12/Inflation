@@ -11,6 +11,7 @@ library(here)
 
 here::i_am("main/tratamiento.R")
 
+##El archivo DATA.csv ya esta procesado, inflaccin.xlsx es la base cruda JM
 dt <- read_xlsx(
   here("Data", "inflacin.xlsx"),
   skip = 1
@@ -26,13 +27,13 @@ names(dt2) <- c(
 base <- dt2 |>
   mutate(Date = yearmonth(fecha)) |>
   select(Date, mensual, anual, acumulada) |>
-  arrange(Date) |>
+  arrange(Date) |> 
   as_tsibble(index = Date)
 
 #para comprobar los saltos entre fechas
 #calculamos la diferencia en meses entre observaciones
 #porque la serie es mensual
-
+## Y esto para????? JM
 base |>
   as_tibble() |>
   arrange(Date) |>
@@ -190,4 +191,154 @@ base_ma |>
     x = "Fecha",
     y = "Componente restante",
     title = "Componente restante - Inflación mensual"
+  )
+
+##Validación JM
+base_desc<-base %>%
+  model(
+    classical_decomposition(mensual, type = "additive")
+  ) %>%
+  components()
+
+base_desc %>%
+  autoplot() +
+  labs(
+    title = "Descomposición clásica aditiva de la inflación mensual en Ecuador"
+  )
+
+##De forma visual parece que la descomposición es adecuada 
+
+##Descomposición multiplicativa
+# Y_t = T_t * S_t * R_t
+# La descomposición multiplicativa exige Y_t > 0.
+# La inflación mensual contiene meses con deflación (Y_t <= 0), por lo que
+# se trabaja con la serie desplazada Y*_t = Y_t + c, con c > |min(Y_t)|.
+
+m <- 12  # periodicidad mensual
+
+# Desplazamiento mínimo para garantizar que todos los valores sean positivos
+c <- abs(min(base$mensual, na.rm = TRUE)) + 0.01
+
+base_mult <- base |>
+  mutate(
+    mensual_pos = mensual + c
+  )
+
+# -------------------------------------------------------------------
+# Pasos 1 y 2:
+# Tendencia-ciclo 2x12-MA y serie sin tendencia Y*_t / T_hat
+# -------------------------------------------------------------------
+div_mult <- base_mult |>
+  mutate(
+    # Primera media móvil de 12 meses
+    T_hat = slider::slide_dbl(
+      mensual_pos,
+      mean,
+      .before = 5,
+      .after = 6,
+      .complete = TRUE
+    ),
+    # Segunda media móvil de orden 2: centra la media de 12 meses
+    T_hat = slider::slide_dbl(
+      T_hat,
+      mean,
+      .before = 1,
+      .after = 0,
+      .complete = TRUE
+    ),
+    # Paso 2: eliminación de la tendencia
+    y_sobre_T = mensual_pos / T_hat,
+    mes = month(Date, label = TRUE, abbr = TRUE)
+  )
+
+# Serie original y tendencia-ciclo
+div_mult |>
+  autoplot(mensual, colour = "gray") +
+  geom_line(aes(y = T_hat - c), colour = "#D55E00") +
+  labs(
+    x = "Fecha",
+    y = "Inflación mensual (%)",
+    title = "Inflación mensual y tendencia-ciclo 2x12-MA"
+  )
+
+# Serie sin tendencia
+div_mult |>
+  autoplot(y_sobre_T) +
+  labs(
+    x = "Fecha",
+    y = "Y*_t / T_hat",
+    title = "Serie sin tendencia - Descomposición multiplicativa"
+  )
+
+
+# Índice estacional por mes y normalización para que sume m = 12
+
+indice_estacional <- div_mult |>
+  as_tibble() |>
+  filter(!is.na(y_sobre_T)) |>
+  group_by(mes) |>
+  summarise(
+    S_hat = mean(y_sobre_T),
+    .groups = "drop"
+  ) |>
+  mutate(
+    # Normalización: suma de los índices = m, media = 1
+    S_hat = S_hat * m / sum(S_hat)
+  )
+
+# Replicar el índice estacional en toda la serie
+div_mult <- div_mult |>
+  as_tibble() |>
+  left_join(indice_estacional, by = "mes") |>
+  mutate(
+    # Paso 4: componente irregular
+    R_hat = mensual_pos / (T_hat * S_hat)
+  )
+
+# Objeto tsibble para graficar los componentes
+div_mult_ts <- div_mult |>
+  as_tsibble(index = Date)
+
+# Índice estacional (repetido en el tiempo, igual que en desc.R)
+div_mult_ts |>
+  autoplot(S_hat) +
+  labs(
+    x = "Fecha",
+    y = "Índice estacional",
+    title = "Índice estacional multiplicativo - Inflación mensual"
+  )
+
+# Componente irregular
+div_mult_ts |>
+  autoplot(R_hat) +
+  labs(
+    x = "Fecha",
+    y = "Componente irregular",
+    title = "Componente irregular - Descomposición multiplicativa"
+  )
+
+# -------------------------------------------------------------------
+# Verificaciones
+# -------------------------------------------------------------------
+sum(indice_estacional$S_hat)   # debe ser 12
+mean(indice_estacional$S_hat)  # debe ser 1
+
+# La serie reconstruida debe coincidir con la observada
+div_mult |>
+  mutate(ajuste = T_hat * S_hat * R_hat) |>
+  summarise(
+    max_error = max(abs(mensual_pos - ajuste), na.rm = TRUE)
+  )
+
+###############################################
+base_mdesc <- base_mult |>
+  model(
+    classical_decomposition(mensual_pos, type = "multiplicative")
+  ) |>
+  components()
+
+base_mdesc |>
+  autoplot() +
+  labs(
+    title = "Descomposición clásica multiplicativa de la inflación mensual (serie desplazada)"
   )
